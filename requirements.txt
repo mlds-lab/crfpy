@@ -1,0 +1,4 @@
+Cython==0.23.4
+numpy==1.11.0
+pystruct==0.2.3
+scipy==0.17.0

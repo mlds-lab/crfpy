@@ -69,7 +69,7 @@ class LinearChainCRF(CRF):
         self.feature_weights = w[:self.n_classes*self.n_features].reshape((self.n_classes,self.n_features))
         
         
-    def param_vector(self):
+    def get_weight_vector(self):
         return np.hstack((self.feature_weights.flatten(),self.transition_weights.flatten()))
 
     def get_params(self, deep=True):

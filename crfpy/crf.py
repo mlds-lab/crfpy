@@ -30,7 +30,7 @@ class CRF:
         else:
             raise(ValueError("%s not implemented as a fit method."%self.method))
         
-    def sufficient_statistics(self, X, Y):
+    def sufficient_statistics(self, x, y):
         raise NotImplementedError( "sufficient_statistics not implemented." )
         
     def expected_sufficient_statistics(self, return_logZ=False):
@@ -54,25 +54,36 @@ class CRF:
     def deaugment(self,w):
         raise NotImplementedError("deaugment not implemented.")
         
+    def devectorize_labels(self,y):
+        return y
+        
+    def vectorize_labels(self,y):
+        return y
+        
     def joint_feature(self,x,y):
+        y = self.devectorize_label(y)
         return self.sufficient_statistics(x,y)
         
     def inference(self,x,w):
         self.set_weights(w)
-        return self.map_inference([x])[0]
+        return self.vectorize_label(self.map_inference([x])[0])
         
     def loss_augmented_inference(self,x,y,w,relaxed=False):
+        y = self.devectorize_label(y)
         self.inference_calls += 1
         x_aug = self.set_loss_augmented_weights(x,y,w)
         y_hat,score = self.map_inference([x_aug],return_score=True)[0]
         # assert np.dot(self.joint_feature(x,y_hat),w) + self.loss(y,y_hat) == score
-        if not np.isclose(np.dot(self.joint_feature(x,y_hat),w) + self.loss(y,y_hat), score):
+        if not np.isclose(np.dot(self.sufficient_statistics(x,y_hat),w) + self.loss(y,y_hat,vectorized_labels=False), score):
+            print "Inference Error: scores don't match"
+            w_aug = self.get_weight_vector()
+            jf_aug = self.joint_feature(x_aug,y_hat)
             keyboard()
-        return y_hat
+        return self.vectorize_label(y_hat)
         
     def log_likelihood(self,X,Y,SS=None,return_gradient=False,alpha=1.0,loss_augmented=False):
         # get parameter vector
-        w = self.param_vector()
+        w = self.get_weight_vector()
         
         # If sufficient statistics not passed calculate them
         if SS is None:
@@ -172,6 +183,7 @@ class CRF:
         self.inference_calls = 0
         self.size_joint_feature = self.n_parameters
         ssvm_learner = NSlackSSVM(self,C=1.0/self.lambda_0,max_iter=self.max_iter,verbose=self.verbose)
+        Y = [self.vectorize_label(y) for y in Y]
         ssvm_learner.fit(X,Y)
         self.set_weights(ssvm_learner.w)
         

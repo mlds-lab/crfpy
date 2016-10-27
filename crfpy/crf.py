@@ -7,48 +7,183 @@ from scipy.optimize import minimize
 # from rutils import keyboard
 
 class CRF:
-    def __init__(self,lambda_0=0.0,n_parameters=1,max_iter=100,verbose=0,test_grad=False,objective="mle",method="bfgs",batch_size=100,lr=1.0,tol=1e-4):
-        self.__dict__.update(locals())
+    """
+        Base Conditional Random Field (CRF) class. The CRF class 
+        implements maximum likelihood and max-margin learning (via
+        pystruct). The user is expected to implement the appropriate
+        inference algorithms for the desired model.
+    """
     
-    def accuracy(self,X,Y):
-        accuracy = 0.0
-        total = 0.0
-        for x,y in zip(X,Y):
-            y_hat = self.predict(X)
-            accuracy += np.sum(y==y_hat)
-            total += y.shape[0]
-            
-        return accuracy/total
+    def __init__(self,lambda_0=0.0,max_iter=100,verbose=0,objective="mle",test_grad=False,method="bfgs",batch_size=100,lr=1.0,tol=1e-4):
+        """
+        Arguments:
+            lambda_0 (float), default: 0.0: 
+                Regularization constant.
+            max_iter (int), default: 100:
+                The maximum number of iterations to run the learning algorithm.
+            verbose (int), default: 0:
+                Verbosity (passed to optimization methods).
+            objective {'mle','ssvm'}, default:'mle': 
+                The objective to be optimized. 'mle' specifies that the
+                parameters should be estimated by Maximum Likelihood Estimation
+                and 'ssvm' specifies that the parameters should be estimated to 
+                minimize the hinge loss.
+            test_grad (Bool), default: False:
+                For the 'mle' objective, this checks the gradient method against 
+                the objective function using finite differences.
+            method {'bfgs','adagrad'}, default:'bfgs':
+                If using the 'mle' objective, this specifies the optimization algorithm
+                to use.
+            batch_size (int), default: 100:
+                If using 'adagrad' to optimize the 'mle' objective, this specifies 
+                mini-batch size.
+            lr (float), default: 1.0:
+                Learning rate for the 'adagrad' algorithm.
+            tol (float), default: 1e-4:
+                Tolerance for the all optimization algorithm.
+        
+        Returns:
+            None
+        
+        """
+        self.__dict__.update(locals())
         
     def fit(self,X,Y):
+        """
+        Estimates the parameters of the model for features X and labels Y.
+    
+        Arguments:
+            X (list):
+                List of features for each instance.
+            Y (list):
+                List of labels for each instance. These may be stored using any 
+                structure with the exception that Y[i] may not be a tuple if 
+                using the 'ssvm' objective (this is a restriction of PyStruct).
+        Returns:
+            None
+        """
         if self.objective=="mle":
             self.fit_mle(X,Y)
         elif self.objective == "ssvm":
             self.fit_ssvm(X,Y)
-        elif self.objective == "alpha_ssvm":
-            self.fit_alpha_ssvm(X,Y)
         else:
             raise(ValueError("%s not implemented as a fit method."%self.method))
         
     def sufficient_statistics(self, x, y):
+        """
+        Calculates the sufficient statistics vector for the instance pair (x,y).
+        Necessary for all learning methods.
+        
+        Arguments:
+            x: Instance features
+            y: Instance labels
+        
+        Returns:
+            phi (numpy.ndarray): 
+                Sufficient statistics (or joint features) for the instance. Should 
+                align with the parameter vector.
+        """
         raise NotImplementedError( "sufficient_statistics not implemented." )
         
-    def expected_sufficient_statistics(self, return_logZ=False):
+    def expected_sufficient_statistics(self, x, return_logZ=False):
+        """
+        Calculates the expected sufficient statistics vector (i.e. marginals) 
+        for the instance pair (x,y).
+        
+        Arguments:
+            x: 
+                Instance features
+            return_logZ (bool): 
+                Indicates whether the log partition function should also be returned.
+        
+        Returns:
+            phi_hat (numpy.ndarray):
+                Expected sufficient statistics (or marginals) for the instance.
+                Should align with the sufficient statistics vector.
+            logZ (float):
+                The log partition function. Returned only if return_logZ == True.
+        """
         raise NotImplementedError( "expected_sufficient_statistics not implemented." )
         
     def get_weight_vector(self):
+        """
+        Get the current weights as a vector. Necessary for all learning methods.
+        
+        Returns:
+            w (numpy.ndarray):
+                Vector or weights.
+        """
         raise NotImplementedError( "get_weight_vector not implemented." )
         
     def set_weights(self, w):
+        """
+        Takes a weight vector and seperates it for use in inference. For example, 
+        a linear chain CRF would separate the weights in to unary potential and 
+        transistion weights. Necessary for all learning methods.
+        
+        Arguments:
+            w (numpy.ndarray):
+                Vector or weights.
+        
+        Returns:
+            None
+        """
         raise NotImplementedError( "set_weights not implemented." )
         
-    def map_inference(self, X):
+    def map_inference(self, x, return_score=False):
+        """
+        Performs MAP inference. Necessary only for 'ssvm' learning, however, also 
+        necessary for prediction.
+        
+        Arguments:
+            x: 
+                Instance features
+            return_score (bool): 
+                Indicates whether to return the unnormalized log probability of the
+                MAP label.
+        
+        Returns:
+            y_hat:
+                MAP Label.
+            score (float):
+                The unnormalized log probability of the MAP label. Returned 
+                only if return_score == True.
+        """
         raise NotImplementedError("map_inference not implemented.")
         
+        
     def set_loss_augmented_weights(self, x, y, w):
+        """
+        Augments the weights and features so that 
+        w_aug^T phi(x_aug,y') = w^T phi(x,y') + loss(y,y'). This is possible 
+        when the loss decomposes over the structure. Necessary for 'ssvm' learning.
+        
+        Arguments:
+            x:
+                Instance features.
+            y: 
+                Instance labels.
+            w (numpy.ndarray):
+                Vector or weights.
+        
+        Returns:
+            x_aug:
+                Augmented features.
+        """
         raise NotImplementedError("set_loss_augmented_weights not implemented.")
         
     def loss(self,y,y_hat):
+        """
+        Calculates the loss between y and y_hat. Should be 
+        semetric (i.e. loss(y,y') = loss(y',y)). Necessary for 'ssvm' learning. 
+        
+        Arguments:
+            y: True label.
+            y_hat: Predicted label.
+        
+        Return:
+            loss (float): Loss.
+        """
         raise NotImplementedError("loss not implemented.")
         
     def deaugment(self,w):
@@ -60,19 +195,22 @@ class CRF:
     def vectorize_label(self,y):
         return y
         
+    def batch_map_inference(self,X, return_score=False):
+        return [self.map_inference(x, return_score) for x in X]
+        
     def joint_feature(self,x,y):
         y = self.devectorize_label(y)
         return self.sufficient_statistics(x,y)
         
     def inference(self,x,w):
         self.set_weights(w)
-        return self.vectorize_label(self.map_inference([x])[0])
+        return self.vectorize_label(self.map_inference(x))
         
     def loss_augmented_inference(self,x,y,w,relaxed=False):
         y = self.devectorize_label(y)
         self.inference_calls += 1
         x_aug = self.set_loss_augmented_weights(x,y,w)
-        y_hat,score = self.map_inference([x_aug],return_score=True)[0]
+        y_hat,score = self.map_inference(x_aug,return_score=True)
         # assert np.dot(self.joint_feature(x,y_hat),w) + self.loss(y,y_hat) == score
         if not np.isclose(np.dot(self.sufficient_statistics(x,y_hat),w) + self.loss(y,y_hat,vectorized_labels=False), score):
             # print "Inference Error: scores don't match"
@@ -188,24 +326,5 @@ class CRF:
         ssvm_learner.fit(X,Y)
         self.set_weights(ssvm_learner.w)
         
-    def fit_alpha_ssvm(self,X,Y):
-        regularized_nll_and_gradient = self.get_mle_objective(X,Y)
-                
-        # Use l-bfgs
-        if self.method == "bfgs":
-            w = np.zeros(self.n_parameters)
-            for alpha_exp in [10]:
-                alpha = 10.0**alpha_exp
-                print "Alpha =", alpha
-                regularized_nll_and_gradient = self.get_mle_objective(X,Y,alpha=alpha,loss_augmented=True)
-                # res = minimize(regularized_nll_and_gradient,w,jac=True,method='L-BFGS-B',options={'maxiter':self.max_iter,'disp':bool(self.verbose),"ftol":self.tol})
-                res = minimize(regularized_nll_and_gradient,w,jac=True,method='L-BFGS-B',options={'maxiter':self.max_iter,'disp':0,"ftol":self.tol})
-                print res.fun
-                w = res.x
-            self.set_weights(w)
-            
-        # use adagrad    
-        elif self.method == "adagrad":
-            raise NotImplementedError("fit_alpha_ssvm not implemented with adagrad.")
         
         

@@ -4,7 +4,7 @@ import itertools as it
 from scipy.misc import logsumexp
 from scipy.optimize import minimize
 # from pyhmc import hmc
-from rutils import keyboard
+# from rutils import keyboard
 
 class CRF:
     def __init__(self,lambda_0=0.0,n_parameters=1,max_iter=100,verbose=0,test_grad=False,objective="mle",method="bfgs",batch_size=100,lr=1.0,tol=1e-4):
@@ -75,10 +75,11 @@ class CRF:
         y_hat,score = self.map_inference([x_aug],return_score=True)[0]
         # assert np.dot(self.joint_feature(x,y_hat),w) + self.loss(y,y_hat) == score
         if not np.isclose(np.dot(self.sufficient_statistics(x,y_hat),w) + self.loss(y,y_hat,vectorized_labels=False), score):
-            print "Inference Error: scores don't match"
-            w_aug = self.get_weight_vector()
-            jf_aug = self.joint_feature(x_aug,y_hat)
-            keyboard()
+            # print "Inference Error: scores don't match"
+            # w_aug = self.get_weight_vector()
+            # jf_aug = self.joint_feature(x_aug,y_hat)
+            # keyboard()
+            raise ValueError("Inference Error: scores don't match")
         return self.vectorize_label(y_hat)
         
     def log_likelihood(self,X,Y,SS=None,return_gradient=False,alpha=1.0,loss_augmented=False):

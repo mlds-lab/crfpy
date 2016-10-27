@@ -1,6 +1,6 @@
 import numpy as np
 from crf import CRF
-from rutils import keyboard
+# from rutils import keyboard
 
 class CFGCRF(CRF):
     def __init__(self,grammar_fn,n_terminal_features,n_rule_features,**kwargs):

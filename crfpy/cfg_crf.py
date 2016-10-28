@@ -3,7 +3,7 @@ from crf import CRF
 # from rutils import keyboard
 
 class CFGCRF(CRF):
-    def __init__(self,grammar_fn,n_terminal_features,n_rule_features,**kwargs):
+    def __init__(self,grammar_fn,n_terminal_features,n_rule_features,rule_feature_function=None,**kwargs):
         self.__dict__.update(locals())
         CRF.__init__(self,**kwargs)
         self.load_grammar(grammar_fn)
@@ -78,6 +78,12 @@ class CFGCRF(CRF):
         idx += k - i - 1
         return idx
         
+    def _rule_feature_function(self,x,i,j,k):
+        if self.rule_feature_function is not None:
+            return np.hstack((np.array([1.0]),self.rule_feature_function(x,i,j,k)))
+        else:
+            return np.array([1.0])
+        
     def depth_first_traversal(self,y,return_ij=False):
         stack = [[y,0,0,False,False]]
         offset = 0
@@ -114,9 +120,9 @@ class CFGCRF(CRF):
         if node[1] == -1:
             return -1
         elif node[2] == -1:
-            return self.rules_dict[(node[0],(node[1][0],-1))]
+            return self.rules_dict[(node[0],(node[1][0],-1))], (node[0],(node[1][0],-1))
         else:
-            return self.rules_dict[(node[0],(node[1][0],node[2][0]))]
+            return self.rules_dict[(node[0],(node[1][0],node[2][0]))], (node[0],(node[1][0],node[2][0]))
             
     def get_leaves(self,y):
         leaves = []
@@ -127,16 +133,16 @@ class CFGCRF(CRF):
         return leaves
         
     def sufficient_statistics(self, x, y):
-        n = x[0].shape[0]
-        terminal_statistics = np.zeros((len(self.terminals),x[0].shape[1]))
-        rule_statistics = np.zeros((len(self.rules),x[1].shape[1]))
+        n = x.shape[0]
+        terminal_statistics = np.zeros((len(self.terminals),x.shape[1]))
+        rule_statistics = np.zeros((len(self.rules),self.n_rule_features))
         for node,i,j,k in self.depth_first_traversal(y,return_ij=True):
             if self.is_terminal(node[0]):
-                terminal_statistics[self.symbol_dict[node[0]]] += x[0][i]
+                terminal_statistics[self.symbol_dict[node[0]]] += x[i]
             else:
                 feature_idx = self.get_feature_idx(n,i,j,k)
-                rule = self.get_rule(node)
-                rule_statistics[rule] += x[1][feature_idx]
+                rule_idx, rule = self.get_rule(node)
+                rule_statistics[rule_idx] += self._rule_feature_function(x,i,j,k)
         
         return np.hstack((terminal_statistics.flatten(),rule_statistics.flatten()))
         
@@ -178,11 +184,11 @@ class CFGCRF(CRF):
             
         return [y[0],0,left[2]+right[2],left,right]
     
-    def map_inference(self, X, return_score=False):
-        return [self._map_inference(x,return_score) for x in X]
+    # def map_inference(self, X, return_score=False):
+    #     return [self._map_inference(x,return_score) for x in X]
         
-    def _map_inference(self, x, return_score=False):
-        n = x[0].shape[0]
+    def map_inference(self, x, return_score=False):
+        n = x.shape[0]
         stack = [(self.symbol_dict[self.start_symbol],0,n)]
         scores = {}
         trace = {}
@@ -199,7 +205,7 @@ class CFGCRF(CRF):
             if symbol < self.n_terminals:
                 # print symbol,i,j
                 if i == j-1:
-                    scores[(symbol,i,j)] = np.dot(self.terminal_weights[symbol],x[0][i])
+                    scores[(symbol,i,j)] = np.dot(self.terminal_weights[symbol],x[i])
                     # print "score:",scores[(symbol,i,j)]
                 else:
                     scores[(symbol,i,j)] = -np.inf
@@ -237,8 +243,8 @@ class CFGCRF(CRF):
                     score = scores[(left,i,k)]
                     if right != -1:
                         score += scores[(right,k,j)]
-                    feature_idx = self.get_feature_idx(n,i,j,k)
-                    score += np.dot(self.rule_weights[rule],x[1][feature_idx])
+                    # feature_idx = self.get_feature_idx(n,i,j,k)
+                    score += np.dot(self.rule_weights[rule],self._rule_feature_function(x,i,j,k))
                     
                     # print symbol,i,j,k,left,right,score
                     
@@ -277,7 +283,7 @@ class CFGCRF(CRF):
         
     def set_loss_augmented_weights(self, x, y, w):
         self.set_weights(w)
-        n = x[0].shape[0]
+        n = x.shape[0]
         
         w0_class = np.eye(len(self.terminals))
         self.terminal_weights = np.hstack((self.terminal_weights,w0_class))
@@ -285,9 +291,9 @@ class CFGCRF(CRF):
         x0_class = np.ones((n,self.n_terminals))
         y0 = np.array([self.symbol_dict[s] for s in self.get_leaves(y)])
         x0_class[range(x0_class.shape[0]),y0] = 0.0
-        x0_aug = np.hstack((x[0],x0_class))
+        x0_aug = np.hstack((x,x0_class))
         
-        return [x0_aug,x[1]]
+        return x0_aug
         
     def loss(self,y,y_hat,vectorized_labels=False):
         y0 = np.array(self.get_leaves(y))

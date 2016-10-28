@@ -326,5 +326,8 @@ class CRF:
         ssvm_learner.fit(X,Y)
         self.set_weights(ssvm_learner.w)
         
+    def predict(self,X):
+        return [self.map_inference(x) for x in X]
+        
         
         

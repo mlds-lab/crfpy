@@ -39,8 +39,7 @@ class TestCFGCRF(unittest.TestCase):
             for j in range(i+1,n+1):
                 for k in range(i+1,j+1):
                     x_rule.append(1.0)
-        x_rule = np.array(x_rule).reshape((len(x_rule),1))
-        self.x1 = [x_terminal,x_rule]
+        self.x1 = x_terminal
                     
     
     def test_load_grammar(self):
@@ -120,7 +119,7 @@ class TestCFGCRF(unittest.TestCase):
         self.assertListEqual(list(ss),list(expected_statistics))
 
     def test_map_inference(self):
-        y_hat,score = self.mdl._map_inference(self.x1,return_score=True)
+        y_hat,score = self.mdl.map_inference(self.x1,return_score=True)
         expected_traversal = ['a','A','b','B','c','c','c','c','C','C','C','C','START2','START']
         got_traversal = [node[0] for node in self.mdl.depth_first_traversal(y_hat)]
         self.assertListEqual(expected_traversal,got_traversal)
@@ -152,10 +151,10 @@ class TestCFGCRF(unittest.TestCase):
             n = len(self.mdl.get_leaves(y))
             # print n,self.mdl.get_leaves(y)
             x0 = np.random.randn(n,1)
-            x1_len = self.mdl.get_feature_idx(n,n-1,n,n) + 1
-            x1 = np.random.randn(x1_len,1)
+            # x1_len = self.mdl.get_feature_idx(n,n-1,n,n) + 1
+            # x1 = np.random.randn(x1_len,1)
             Y.append(y)
-            X.append([x0,x1])
+            X.append(x0)
             
         return X,Y
         
@@ -174,7 +173,7 @@ class TestCFGCRF(unittest.TestCase):
         self.mdl.set_weights(w)
         # self.mdl.rule_weights[:,:] = 0.0
         
-        y_hat,score = self.mdl._map_inference(x,return_score=True)
+        y_hat,score = self.mdl.map_inference(x,return_score=True)
         jf_hat = self.mdl.sufficient_statistics(x,y_hat)
         jf = self.mdl.sufficient_statistics(x,y)
         self.assertAlmostEqual(np.dot(jf_hat,w),score)

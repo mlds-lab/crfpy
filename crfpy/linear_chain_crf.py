@@ -81,7 +81,7 @@ class LinearChainCRF(CRF):
         return self
         
     def map_inference(self,X,return_score=False):
-        return [self.viterbi(x,return_score=return_score) for x in X]
+        return self.viterbi(x,return_score=return_score)
     
     def viterbi(self,x,return_score=False):
         # init

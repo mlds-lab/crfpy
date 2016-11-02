@@ -78,9 +78,10 @@ class CFGCRF(CRF):
         idx += k - i - 1
         return idx
         
-    def _rule_feature_function(self,x,i,j,k):
+    def _rule_feature_function(self,x1,i,j,k):
         if self.rule_feature_function is not None:
-            return np.hstack((np.array([1.0]),self.rule_feature_function(x,i,j,k)))
+            # return np.hstack((np.array([1.0]),self.rule_feature_function(x1,i,j,k)))
+            return self.rule_feature_function(x1,i,j,k)
         else:
             return np.array([1.0])
         
@@ -133,16 +134,16 @@ class CFGCRF(CRF):
         return leaves
         
     def sufficient_statistics(self, x, y):
-        n = x.shape[0]
-        terminal_statistics = np.zeros((len(self.terminals),x.shape[1]))
+        n = x[0].shape[0]
+        terminal_statistics = np.zeros((len(self.terminals),x[0].shape[1]))
         rule_statistics = np.zeros((len(self.rules),self.n_rule_features))
         for node,i,j,k in self.depth_first_traversal(y,return_ij=True):
             if self.is_terminal(node[0]):
-                terminal_statistics[self.symbol_dict[node[0]]] += x[i]
+                terminal_statistics[self.symbol_dict[node[0]]] += x[0][i]
             else:
                 feature_idx = self.get_feature_idx(n,i,j,k)
                 rule_idx, rule = self.get_rule(node)
-                rule_statistics[rule_idx] += self._rule_feature_function(x,i,j,k)
+                rule_statistics[rule_idx] += self._rule_feature_function(x[1],i,j,k)
         
         return np.hstack((terminal_statistics.flatten(),rule_statistics.flatten()))
         
@@ -188,7 +189,7 @@ class CFGCRF(CRF):
     #     return [self._map_inference(x,return_score) for x in X]
         
     def map_inference(self, x, return_score=False):
-        n = x.shape[0]
+        n = x[0].shape[0]
         stack = [(self.symbol_dict[self.start_symbol],0,n)]
         scores = {}
         trace = {}
@@ -205,7 +206,7 @@ class CFGCRF(CRF):
             if symbol < self.n_terminals:
                 # print symbol,i,j
                 if i == j-1:
-                    scores[(symbol,i,j)] = np.dot(self.terminal_weights[symbol],x[i])
+                    scores[(symbol,i,j)] = np.dot(self.terminal_weights[symbol],x[0][i])
                     # print "score:",scores[(symbol,i,j)]
                 else:
                     scores[(symbol,i,j)] = -np.inf
@@ -244,7 +245,7 @@ class CFGCRF(CRF):
                     if right != -1:
                         score += scores[(right,k,j)]
                     # feature_idx = self.get_feature_idx(n,i,j,k)
-                    score += np.dot(self.rule_weights[rule],self._rule_feature_function(x,i,j,k))
+                    score += np.dot(self.rule_weights[rule],self._rule_feature_function(x[1],i,j,k))
                     
                     # print symbol,i,j,k,left,right,score
                     
@@ -283,7 +284,7 @@ class CFGCRF(CRF):
         
     def set_loss_augmented_weights(self, x, y, w):
         self.set_weights(w)
-        n = x.shape[0]
+        n = x[0].shape[0]
         
         w0_class = np.eye(len(self.terminals))
         self.terminal_weights = np.hstack((self.terminal_weights,w0_class))
@@ -291,9 +292,9 @@ class CFGCRF(CRF):
         x0_class = np.ones((n,self.n_terminals))
         y0 = np.array([self.symbol_dict[s] for s in self.get_leaves(y)])
         x0_class[range(x0_class.shape[0]),y0] = 0.0
-        x0_aug = np.hstack((x,x0_class))
+        x0_aug = np.hstack((x[0],x0_class))
         
-        return x0_aug
+        return [x0_aug,x[1]]
         
     def loss(self,y,y_hat,vectorized_labels=False):
         y0 = np.array(self.get_leaves(y))

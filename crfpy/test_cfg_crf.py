@@ -39,7 +39,8 @@ class TestCFGCRF(unittest.TestCase):
             for j in range(i+1,n+1):
                 for k in range(i+1,j+1):
                     x_rule.append(1.0)
-        self.x1 = x_terminal
+        x_rule = np.array(x_rule).reshape((len(x_rule),1))
+        self.x1 = [x_terminal,x_rule]
                     
     
     def test_load_grammar(self):
@@ -151,10 +152,10 @@ class TestCFGCRF(unittest.TestCase):
             n = len(self.mdl.get_leaves(y))
             # print n,self.mdl.get_leaves(y)
             x0 = np.random.randn(n,1)
-            # x1_len = self.mdl.get_feature_idx(n,n-1,n,n) + 1
-            # x1 = np.random.randn(x1_len,1)
+            x1_len = self.mdl.get_feature_idx(n,n-1,n,n) + 1
+            x1 = np.random.randn(x1_len,1)
             Y.append(y)
-            X.append(x0)
+            X.append([x0,x1])
             
         return X,Y
         
@@ -177,7 +178,7 @@ class TestCFGCRF(unittest.TestCase):
         jf_hat = self.mdl.sufficient_statistics(x,y_hat)
         jf = self.mdl.sufficient_statistics(x,y)
         self.assertAlmostEqual(np.dot(jf_hat,w),score)
-        self.assertGreaterEqual(score,np.dot(jf,w))
+        self.assertTrue(np.isclose(score,np.dot(jf,w)) or score >= np.dot(jf,w))
         
 if __name__=="__main__":
     unittest.main()

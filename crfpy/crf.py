@@ -329,5 +329,8 @@ class CRF:
     def predict(self,X):
         return [self.map_inference(x) for x in X]
         
+    def get_params(self, deep=True):
+        return {p:self.__dict__[p] for p in ["lambda_0","max_iter","verbose","objective","test_grad","method","batch_size","lr","tol"]}
+        
         
         

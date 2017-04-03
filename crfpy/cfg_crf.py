@@ -3,7 +3,7 @@ from crf import CRF
 # from rutils import keyboard
 
 class CFGCRF(CRF):
-    def __init__(self,grammar_fn,n_terminal_features,n_rule_features,rule_feature_function=None,**kwargs):
+    def __init__(self,grammar_fn=None,n_terminal_features=5,n_rule_features=5,scoring='accuracy',rule_feature_function=None,**kwargs):
         self.__dict__.update(locals())
         CRF.__init__(self,**kwargs)
         self.load_grammar(grammar_fn)
@@ -308,6 +308,26 @@ class CFGCRF(CRF):
         rule_weights = w[offset:].reshape((len(self.rules),-1))
         
         return np.hstack((terminal_weights.flatten(),rule_weights.flatten()))
+        
+    def get_production_weights(self,production):
+        if production in self.terminals:
+            idx = self.symbol_dict[production]
+            return self.terminal_weights[idx]
+        elif production in self.rules_dict:
+            idx = self.rules_dict[production]
+            return self.rule_weights[idx]
+        else:
+            raise ValueError("Invalid production: %s"%production)
+            
+    def get_params(self, deep=True):
+        out = CRF.get_params(self,deep)
+        out.update({p:self.__dict__[p] for p in ["grammar_fn","n_terminal_features","n_rule_features","scoring","rule_feature_function"]})
+        return out
+
+    def set_params(self, **parameters):
+        for parameter, value in parameters.items():
+            setattr(self,parameter, value)
+        return self
         
         
         

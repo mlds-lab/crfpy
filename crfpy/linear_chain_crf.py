@@ -81,7 +81,7 @@ class LinearChainCRF(CRF):
         return self
         
     def map_inference(self,X,return_score=False):
-        return self.viterbi(x,return_score=return_score)
+        return self.viterbi(X,return_score=return_score)
     
     def viterbi(self,x,return_score=False):
         # init
@@ -124,7 +124,7 @@ class LinearChainCRF(CRF):
         
         return x_aug
         
-    def loss(self,y,y_hat):
+    def loss(self,y,y_hat,vectorized_labels=False):
         return np.sum(y!=y_hat)
         
     def deaugment(self,w):
@@ -153,18 +153,18 @@ def test_ssvm_learning():
     print mdl.transition_weights
     print mdl.feature_weights
     
-def test_alpha_ssvm_learning():
-    data = np.load("../data/test_data/linear_chain_data.npy")[0]
-    X,Y = zip(*data)
-    mdl = LinearChainCRF(2,2,lambda_0=1.0,verbose=1,objective="alpha_ssvm")
-    # keyboard()
-    mdl.fit(X,Y)
-    print mdl.transition_weights
-    print mdl.feature_weights
+# def test_alpha_ssvm_learning():
+#     data = np.load("../data/test_data/linear_chain_data.npy")[0]
+#     X,Y = zip(*data)
+#     mdl = LinearChainCRF(2,2,lambda_0=1.0,verbose=1,objective="alpha_ssvm")
+#     # keyboard()
+#     mdl.fit(X,Y)
+#     print mdl.transition_weights
+#     print mdl.feature_weights
     
 if __name__=="__main__":
     test_mle_learning()
     test_ssvm_learning()
-    test_alpha_ssvm_learning()
+    # test_alpha_ssvm_learning()
     
         

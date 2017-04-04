@@ -67,7 +67,7 @@ class CRF:
         elif self.objective == "ssvm":
             self.fit_ssvm(X,Y)
         else:
-            raise(ValueError("%s not implemented as a fit method."%self.method))
+            raise(ValueError("%s not implemented as a fit method."%self.objective))
         
     def sufficient_statistics(self, x, y):
         """
